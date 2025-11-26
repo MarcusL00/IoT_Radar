@@ -25,7 +25,7 @@ class MQTT {
         Serial.print("Attempting MQTT connection...");
         if (client.connect("ArduinoClient")) {
           Serial.println("connected");
-          client.subscribe("traffic/control"); // example subscription
+          client.subscribe("radar/distance");
         } else {
           Serial.print("failed, rc=");
           Serial.print(client.state());
@@ -38,7 +38,7 @@ class MQTT {
 
     public:
       void PublishMessage(const char* message) {
-        const char* topic = "traffic/light";
+        const char* topic = "radar/distance";
         client.publish(topic, message);
       }
 };
