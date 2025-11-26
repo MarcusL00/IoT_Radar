@@ -9,4 +9,30 @@ services:
       - ./config:/mosquitto/config
       - ./data:/mosquitto/data
       - ./log:/mosquitto/log
-    network_mode: bridge
+    restart: unless-stopped
+    networks:
+      - radar_network
+
+  frontend:
+    build:
+      context: ../frontend/SmartTraficControlSystem
+      dockerfile: ../../docker/Dockerfile.frontend
+    working_dir: /app
+    volumes:
+      - ../frontend/SmartTraficControlSystem:/app:cached
+    ports:
+      - '5212:5212'
+      - '5679:5678'
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1
+    networks:
+      - radar_network
+    restart: unless-stopped
+
+networks:
+  radar_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
