@@ -23,13 +23,11 @@ class Radar {
           motor.TurnDegrees(pos);
           delay(10); // smaller delay = faster movement
       }
-      delay(2000); // pause 2 seconds
 
       for (int pos = 180; pos >= 0; pos -= 1)
       {
           motor.TurnDegrees(pos);
           delay(10);
       }
-      delay(2000);
     }
 };
