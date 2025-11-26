@@ -25,7 +25,7 @@ class MQTT {
         Serial.print("Attempting MQTT connection...");
         if (client.connect("ArduinoClient")) {
           Serial.println("connected");
-          client.subscribe("radar/distance");
+          client.subscribe("radar/distance"); 
         } else {
           Serial.print("failed, rc=");
           Serial.print(client.state());
