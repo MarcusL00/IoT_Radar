@@ -1,2 +1,6 @@
+# Mosquitto MQTT broker files
 docker/log/**
 docker/data/**
+
+# Arduino files
+arduino/Config.h
