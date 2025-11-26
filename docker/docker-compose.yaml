@@ -15,11 +15,11 @@ services:
 
   frontend:
     build:
-      context: ../frontend/SmartTraficControlSystem
+      context: ../frontend/radar_frontend
       dockerfile: ../../docker/Dockerfile.frontend
     working_dir: /app
     volumes:
-      - ../frontend/SmartTraficControlSystem:/app:cached
+      - ../frontend/radar_frontend:/app:cached
     ports:
       - '5212:5212'
       - '5679:5678'
