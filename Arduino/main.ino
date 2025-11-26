@@ -12,6 +12,8 @@ unsigned long last_sensor_read;
 
 void setup()
 {
+  Serial.begin(9600);
+
   wiFiConnection.Connect();
   mqtt.Connect();
 
