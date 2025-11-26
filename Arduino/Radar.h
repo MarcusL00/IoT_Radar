@@ -8,8 +8,8 @@ class Radar
   Sensor sensor;
 
 public:
-  Radar(int motorPin, int echoPin, int triggerPin)
-      : motor(motorPin), sensor(triggerPin, echoPin)
+  Radar(int motor_pin, int trigger_pin, int echo_pin)
+      : motor(motor_pin), sensor(trigger_pin, echo_pin)
   {
   }
 
