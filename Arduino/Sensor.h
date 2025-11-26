@@ -1,21 +1,18 @@
-
-class Sensor{
+class Sensor
+{
   int trig_Pin;
   int echo_Pin;
 
-
-  public:
-    Sensor(int trig_Pin, int echo_Pin) : trig_Pin(trig_Pin), echo_Pin(echo_Pin)  { }
-
-  public:
-    
-
-  void setup(){
-    pinMode(trig_Pin, OUTPUT);  
-    pinMode(echo_Pin, INPUT);  
+public:
+  Sensor(int trig_Pin, int echo_Pin) : trig_Pin(trig_Pin), echo_Pin(echo_Pin)
+  {
+    pinMode(trig_Pin, OUTPUT);
+    pinMode(echo_Pin, INPUT);
   }
-  public:
-    long getDistance() {
+
+public:
+  long getDistance()
+  {
     // Trigger ultrasonic pulse
     digitalWrite(trigPin, LOW);
     delayMicroseconds(2);
@@ -29,5 +26,5 @@ class Sensor{
     // Convert to distance (cm)
     long distance = duration * 0.034 / 2;
     return distance;
-}
+  }
 };

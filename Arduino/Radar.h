@@ -1,33 +1,37 @@
 #include "Motor.h"
+#include "Sensor.h"
 #include <Servo.h>
 
-class Radar {
+class Radar
+{
   Motor motor;
-  int echoPin;
-  int triggerPin;
+  Sensor sensor;
 
-  public:
-    Radar(int motorPin, int echoPin, int triggerPin)
-      : motor(motorPin), echoPin(echoPin), triggerPin(triggerPin) {
+public:
+  Radar(int motorPin, int sensorPin, int echoPin, int triggerPin)
+      : motor(motorPin), sensor(sensorPin, echoPin)
+  {
+  }
+
+public:
+  void Init()
+  {
+    motor.Init();
+  }
+
+public:
+  void Scan()
+  {
+    for (int pos = 0; pos <= 180; pos += 1)
+    { // move slowly
+      motor.TurnDegrees(pos);
+      delay(10); // smaller delay = faster movement
     }
 
-  public:
-    void Init() {
-      motor.Init();
+    for (int pos = 180; pos >= 0; pos -= 1)
+    {
+      motor.TurnDegrees(pos);
+      delay(10);
     }
-
-  public:
-    void Scan() {
-      for (int pos = 0; pos <= 180; pos += 1)
-      { // move slowly
-          motor.TurnDegrees(pos);
-          delay(10); // smaller delay = faster movement
-      }
-
-      for (int pos = 180; pos >= 0; pos -= 1)
-      {
-          motor.TurnDegrees(pos);
-          delay(10);
-      }
-    }
+  }
 };
