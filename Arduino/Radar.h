@@ -24,6 +24,7 @@ public:
   {
     for (int pos = 0; pos <= 180; pos += 1)
     { // move slowly
+      sensor.getDistance()
       motor.TurnDegrees(pos);
       delay(10); // smaller delay = faster movement
     }
