@@ -6,7 +6,7 @@
 WiFiConnection wiFiConnection(WIFI_SSID, WIFI_PASSWORD);
 MQTT mqtt(MQTT_SERVER, MQTT_PORT);
 
-Radar radar(MOTOR_PIN, DISTANCE_SENSOR_TRIG_PIN, DISTANCE_SENSOR_ECHO_PIN);
+Radar radar(2, 3, 4);
 
 unsigned long last_sensor_read;
 
@@ -24,7 +24,8 @@ void loop()
 {
   unsigned long runtime = millis();
 
-  if (runtime - last_sensor_read >= 200) {
+  if (runtime - last_sensor_read >= 200)
+  {
     radar.Scan();
     last_sensor_read = runtime;
   }

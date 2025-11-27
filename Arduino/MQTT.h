@@ -37,7 +37,7 @@ class MQTT {
     }
 
     public:
-      void PublishMessage(const char* message) {
+      void PublishMessage(const char* message, int angle) {
         const char* topic = "radar/distance";
         client.publish(topic, message);
       }

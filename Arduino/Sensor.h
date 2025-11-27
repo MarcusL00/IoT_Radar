@@ -20,8 +20,12 @@ public:
     delayMicroseconds(10);
     digitalWrite(trig_pin, LOW);
 
-    // Measure echo time
-    long duration = pulseIn(echo_pin, HIGH);
+    // Measure echo time with timeout
+    long duration = pulseIn(echo_pin, HIGH, 30000); // 30 ms = ~5m range
+
+    if (duration == 0) {
+      return -1; // no echo detected
+    }
 
     // Convert to distance (cm)
     long distance = duration * 0.034 / 2;
