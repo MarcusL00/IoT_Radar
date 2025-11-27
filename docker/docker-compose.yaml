@@ -30,6 +30,24 @@ services:
       - radar_network
     restart: unless-stopped
 
+  mongodb:
+    image: mongo:6.0
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    networks:
+      - radar_network
+
+volumes:
+  mongo_data:
+  mongo_config:
+
 networks:
   radar_network:
     driver: bridge
