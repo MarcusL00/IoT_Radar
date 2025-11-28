@@ -28,7 +28,7 @@ public:
     }
 
     // Convert to distance (cm)
-    long distance = duration * 0.034 / 2;
+    long distance = (duration * 0.034) / 2.0;
     return distance;
   }
 };

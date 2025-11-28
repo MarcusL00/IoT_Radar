@@ -6,18 +6,18 @@
 WiFiConnection wiFiConnection(WIFI_SSID, WIFI_PASSWORD);
 MQTT mqtt(MQTT_SERVER, MQTT_PORT);
 
-Radar radar(2, 3, 4);
+Radar radar(MOTOR_PIN, DISTANCE_SENSOR_TRIG_PIN, DISTANCE_SENSOR_ECHO_PIN);
 
 unsigned long last_sensor_read;
 
 void setup()
-{
+{ 
   Serial.begin(9600);
 
   wiFiConnection.Connect();
   mqtt.Connect();
 
-  radar.Init();
+  radar.Init(); 
 }
 
 void loop()

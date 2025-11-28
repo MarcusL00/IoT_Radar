@@ -24,15 +24,18 @@ public:
   {
     for (int pos = 0; pos <= 180; pos += 1)
     { // move slowly
-      sensor.getDistance()
+      long distance = sensor.getDistance();
+      delay(500); // smaller delay = faster movement
       motor.TurnDegrees(pos);
-      delay(10); // smaller delay = faster movement
+      Serial.println(distance);
     }
 
     for (int pos = 180; pos >= 0; pos -= 1)
     {
+      long distance = sensor.getDistance();
+      delay(500); // smaller delay = faster movement
       motor.TurnDegrees(pos);
-      delay(10);
+      Serial.println(distance);
     }
   }
 };
