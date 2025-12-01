@@ -7,6 +7,8 @@ class MQTT {
   const char* server_hostname;
   int server_port;
 
+  unsigned long lastReconnectAttempt = 0;
+
   public:
     MQTT(const char* server_hostname, int server_port)
       : client(wifiClient) {
@@ -37,8 +39,9 @@ class MQTT {
     }
 
     public:
-      void PublishMessage(const char* message, int angle) {
+      void PublishMessage(const char* message) {
         const char* topic = "radar/distance";
+        Serial.println(message);
         client.publish(topic, message);
       }
 };
