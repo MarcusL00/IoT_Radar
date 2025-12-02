@@ -1,6 +1,10 @@
 ﻿@page "/"
 
 @using MudBlazor
+@using radar_frontend.Components.Services
+@using radar_frontend.Models
+@inject MqttService mqttService
+
 
 <PageTitle>Radar</PageTitle>
 
@@ -26,11 +30,32 @@
 
 	List<BlipPos> Blips = new();
 	Random rnd = new();
+	List<RadarData> radarDataList = new();
 
-	protected override void OnInitialized()
+	protected async override Task OnInitializedAsync()
 	{
+		// Connect to MQTT and subscribe to topics
+		try
+		{
+			await mqttService.ConnectAsync();
+			await mqttService.SubscribeAsync("radar/distance ");
+
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"MQTT subscription failed: {ex.Message}");
+
+		}
+		mqttService.OnMessageReceived += (payload) =>
+		{
+			Console.WriteLine($"MQTT Message received on topic {payload}");
+			radarDataList = mqttService.GetRadarData();
+			InvokeAsync(StateHasChanged); // Update UI when MQTT message received
+		};
+		// Subscribe to MQTT events for real-time updates
+
+
 		// initial blips
-		for (int i = 0; i < 3; i++) Blips.Add(new BlipPos());
 		RefreshBlips();
 	}
 
