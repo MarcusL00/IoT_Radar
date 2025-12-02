@@ -18,3 +18,4 @@ namespace Radar_Frontend.Models
         }
     }
 }
+

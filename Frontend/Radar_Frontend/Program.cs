@@ -1,10 +1,14 @@
 using Radar_Frontend.Components;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Register MudBlazor services
+builder.Services.AddMudServices();
 
 var app = builder.Build();
 
