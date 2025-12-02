@@ -1,14 +1,15 @@
-using radar_frontend.Components;
 using MudBlazor.Services;
+using radar_frontend.Components;
+using radar_frontend.Components.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
 // Register MudBlazor services
 builder.Services.AddMudServices();
+builder.Services.AddSingleton<MqttService>();
 
 var app = builder.Build();
 
@@ -22,11 +23,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-
 app.UseAntiforgery();
 
 app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.Run();
