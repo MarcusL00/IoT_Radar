@@ -1,11 +1,82 @@
 ﻿@page "/"
+@using Radar_Frontend.Models
+@* @using Radar_Frontend.Services
+@inject MqttService mqttService *@
 
 <PageTitle>Home</PageTitle>
+<MudPaper Class="p-4 d-flex flex-column align-items-center" Elevation="3" Style="max-width:900px;margin:0 auto;">
+	<MudText Typo="Typo.h4" Class="mb-2">IoT Radar</MudText>
 
-<h1>Hello, world!</h1>
+	<div id="radar" class="radar">
+		<div class="sweep" />
+		@for (int i = 0; i < Blips.Count; i++)
+		{
+			<div class="blip" style="left:@Blips[i].Left; top:@Blips[i].Top; opacity:1"></div>
+		}
+	</div>
 
-Welcome to your new app.
+	<div class="d-flex gap-2 mt-3">
+		<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RefreshBlips">Scan</MudButton>
+		<MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CenterView">Center</MudButton>
+	</div>
+</MudPaper>
 
-<div class="mt-4">
-	<MudButton Variant="Variant.Filled" Color="Color.Primary">MudBlazor Button</MudButton>
-</div>
+@code {
+	class BlipPos { public string Left { get; set; } = "0px"; public string Top { get; set; } = "0px"; }
+
+	List<BlipPos> Blips = new();
+	Random rnd = new();
+	List<RadarData> radarDataList = new();
+
+	protected async override Task OnInitializedAsync()
+	{
+		@* // Connect to MQTT and subscribe to topics
+		try
+		{
+			await mqttService.ConnectAsync();
+			await mqttService.SubscribeAsync("radar/distance ");
+
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"MQTT subscription failed: {ex.Message}");
+
+		}
+		mqttService.OnMessageReceived += (payload) =>
+		{
+			Console.WriteLine($"MQTT Message received on topic {payload}");
+			radarDataList = mqttService.GetRadarData();
+			InvokeAsync(StateHasChanged); // Update UI when MQTT message received
+		};
+		// Subscribe to MQTT events for real-time updates *@
+
+
+		// initial blips
+		RefreshBlips();
+	}
+
+	void RefreshBlips()
+	{
+		// radar size is 480px in CSS; position blips within circle radius
+		var size = 480.0;
+		var cx = size / 2.0;
+		var cy = size / 2.0;
+		var radius = size / 2.0 * 0.88; // keep inside rings
+
+		for (int i = 0; i < Blips.Count; i++)
+		{
+			var angle = rnd.NextDouble() * Math.PI * 2.0;
+			var r = Math.Sqrt(rnd.NextDouble()) * radius; // uniform in circle
+			var x = cx + r * Math.Cos(angle) - 6; // center the 12px blip
+			var y = cy + r * Math.Sin(angle) - 6;
+			Blips[i].Left = $"{x}px";
+			Blips[i].Top = $"{y}px";
+		}
+		StateHasChanged();
+	}
+
+	void CenterView()
+	{
+		// no-op placeholder: could pan or focus later
+	}
+}
