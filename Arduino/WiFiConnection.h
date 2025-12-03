@@ -35,13 +35,10 @@ class WiFiConnection {
       }
 
   public:
-    void EnsureConnectivity(unsigned long runTime) {
-      if (runTime - lastWiFiCheck >= 5000) {
-        if (WiFi.status() != WL_CONNECTED) {
-          Serial.println("WiFi lost, reconnecting...");
-          Connect();
-        }
-        lastWiFiCheck = runTime;
+    void EnsureConnectivity() {
+      if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi lost, reconnecting...");
+        Connect();
       }
     }
 
