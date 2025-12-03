@@ -1,13 +1,13 @@
 using MudBlazor;
 
-namespace Radar_Frontend.Utilities.Theme
+namespace Radar_Frontend.Components.Utilities.Theme
 {
     public class Default : MudTheme
     {
 
         public Default()
-        {   
-         PaletteLight = new()
+        {
+            PaletteLight = new()
             {
                 Primary = "#2A2C24",
                 Secondary = "#575A4B",

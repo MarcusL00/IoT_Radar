@@ -1,5 +1,5 @@
 ﻿@inherits LayoutComponentBase
-@using Radar_Frontend.Utilities.Theme
+@using Radar_Frontend.Components.Utilities.Theme
 
 <MudThemeProvider Theme="@_selectedTheme.Value" />
 <MudDialogProvider />
@@ -10,7 +10,7 @@
         <MudText Typo="Typo.h5" Class="ml-3" Color="Color.Default">Radar</MudText>
         <MudSpacer />
     </MudAppBar>
-    
+
     <MudMainContent>
         @Body
     </MudMainContent>

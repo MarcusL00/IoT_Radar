@@ -1,5 +1,7 @@
+using Radar_Frontend;
 using Radar_Frontend.Components;
 using MudBlazor.Services;
+using Radar_Frontend.Components.Utilities.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +11,8 @@ builder.Services.AddRazorComponents()
 
 // Register MudBlazor services
 builder.Services.AddMudServices();
+// Register MqttService as a singleton
+builder.Services.AddSingleton<MqttService>();
 
 var app = builder.Build();
 

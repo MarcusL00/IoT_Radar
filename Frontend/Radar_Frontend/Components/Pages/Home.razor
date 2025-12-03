@@ -1,7 +1,9 @@
 ﻿@page "/"
+@using System.Text.Json
 @using Radar_Frontend.Models
-@* @using Radar_Frontend.Services
-@inject MqttService mqttService *@
+@using Radar_Frontend.Components.Utilities.Services
+@inject MqttService mqttService
+
 
 <PageTitle>Home</PageTitle>
 <MudPaper Class="p-4 d-flex flex-column align-items-center" Elevation="3" Style="max-width:900px;margin:0 auto;">
@@ -27,32 +29,39 @@
 	List<BlipPos> Blips = new();
 	Random rnd = new();
 	List<RadarData> radarDataList = new();
-
 	protected async override Task OnInitializedAsync()
 	{
-		@* // Connect to MQTT and subscribe to topics
+		// Connect to MQTT and subscribe to topics
 		try
 		{
 			await mqttService.ConnectAsync();
-			await mqttService.SubscribeAsync("radar/distance ");
-
+			await mqttService.SubscribeAsync("radar/distance");
 		}
 		catch (Exception ex)
 		{
 			Console.WriteLine($"MQTT subscription failed: {ex.Message}");
-
 		}
+
 		mqttService.OnMessageReceived += (payload) =>
 		{
-			Console.WriteLine($"MQTT Message received on topic {payload}");
-			radarDataList = mqttService.GetRadarData();
+			Console.WriteLine($"MQTT Message received with payload: {payload}");
+			try
+			{
+				var list = JsonSerializer.Deserialize<List<RadarData>>(payload);
+				radarDataList = list ?? new List<RadarData>();
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"Failed to parse MQTT payload: {ex.Message}");
+			}
 			InvokeAsync(StateHasChanged); // Update UI when MQTT message received
 		};
-		// Subscribe to MQTT events for real-time updates *@
+		// Subscribe to MQTT events for real-time updates
 
 
 		// initial blips
 		RefreshBlips();
+
 	}
 
 	void RefreshBlips()
