@@ -1,4 +1,3 @@
-
 using System.Text.Json.Serialization;
 
 namespace Radar_Frontend.Models
@@ -17,4 +16,3 @@ namespace Radar_Frontend.Models
         public long Timestamp { get; set; }
     }
 }
-
