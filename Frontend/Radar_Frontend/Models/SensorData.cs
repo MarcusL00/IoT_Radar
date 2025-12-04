@@ -7,8 +7,8 @@ namespace Radar_Frontend.Models
     public class SensorData
     {
         [JsonPropertyName("distance")]
-        internal int DistanceMeasured;
+        public int DistanceMeasured { get; set; }
         [JsonPropertyName("unit")]
-        internal string Unit;
+        public string Unit { get; set; } = string.Empty;
     }
 }
