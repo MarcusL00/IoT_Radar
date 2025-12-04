@@ -10,6 +10,10 @@ class TimeHandler {
     TimeHandler() 
       : timeClient(ntpUDP, "pool.ntp.org", 0, 60000) 
     {
+    }
+
+  public:
+    void Init() {
       timeClient.begin();
     }
     
