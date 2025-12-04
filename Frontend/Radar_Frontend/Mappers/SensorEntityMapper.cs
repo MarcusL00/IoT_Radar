@@ -9,28 +9,33 @@ namespace radar_frontend.Mappers
         {
             List<SensorEntity> sensorEntities = new List<SensorEntity>();
 
-            SensorEntity sensor1 = new SensorEntity
+            if (radarData.SensorData1 != null)
             {
-                //sensorId = 1, // Assuming sensor IDs are predefined
-                Id = radarData.RadarId,
-                DistanceMeasured = radarData.SensorData1.DistanceMeasured,
-                Unit = radarData.SensorData1.Unit,
-                Rotation = radarData.Rotation,
-                Timestamp = radarData.Timestamp,
-            };
+                SensorEntity sensor1 = new SensorEntity
+                {
+                    // let MongoDB generate _id
+                    RadarId = radarData.RadarId,
+                    DistanceMeasured = radarData.SensorData1.DistanceMeasured,
+                    Unit = radarData.SensorData1.Unit,
+                    Rotation = radarData.Rotation,
+                    Timestamp = radarData.Timestamp,
+                };
+                sensorEntities.Add(sensor1);
+            }
 
-            SensorEntity sensor2 = new SensorEntity
+            if (radarData.SensorData2 != null)
             {
-                //sensorId = 2, // Assuming sensor IDs are predefined
-                Id = radarData.RadarId,
-                DistanceMeasured = radarData.SensorData2.DistanceMeasured,
-                Unit = radarData.SensorData2.Unit,
-                Rotation = radarData.Rotation,
-                Timestamp = radarData.Timestamp,
-            };
-
-            sensorEntities.Add(sensor1);
-            sensorEntities.Add(sensor2);
+                SensorEntity sensor2 = new SensorEntity
+                {
+                    // let MongoDB generate _id
+                    RadarId = radarData.RadarId,
+                    DistanceMeasured = radarData.SensorData2.DistanceMeasured,
+                    Unit = radarData.SensorData2.Unit,
+                    Rotation = radarData.Rotation,
+                    Timestamp = radarData.Timestamp,
+                };
+                sensorEntities.Add(sensor2);
+            }
 
             return sensorEntities;
         }
