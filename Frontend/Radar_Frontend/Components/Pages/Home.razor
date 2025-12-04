@@ -102,7 +102,7 @@
 		{
 			Left = $"{x:F1}px",
 			Top = $"{y:F1}px",
-			CreatedAt = radar.Timestamp // already a DateTime
+			CreatedAt = radar.Timestamp == 0 ? DateTime.UtcNow : DateTimeOffset.FromUnixTimeMilliseconds(radar.Timestamp).UtcDateTime
 		});
 
 		i++;
