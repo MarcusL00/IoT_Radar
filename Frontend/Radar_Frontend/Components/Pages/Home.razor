@@ -3,7 +3,13 @@
 @using Radar_Frontend.Models
 @using Radar_Frontend.Components.Utilities.Services
 @using global::Radar_Frontend.Models
+@using radar_frontend.Entities
+@using radar_frontend.Mappers
+@using radar_frontend.Interfaces
+@using radar_frontend.Repositories
+
 @inject MqttService mqttService
+@inject ISensorRepository SensorRepository
 
 <PageTitle>Home</PageTitle>
 
@@ -34,6 +40,7 @@
 	}
 
 	List<BlipPos> Blips = new();
+	List<SensorEntity> sensorEntities = new();	
 
 	DateTime lastUpdate = DateTime.MinValue;
 
@@ -51,7 +58,6 @@
 
 		mqttService.OnMessageReceived += async (payload) =>
 		{
-			if ((DateTime.UtcNow - lastUpdate).TotalMilliseconds < 200) return; // skip if too soon
 			lastUpdate = DateTime.UtcNow;
 			Console.WriteLine($"MQTT Message received with payload: {payload}");
 			try
@@ -61,6 +67,23 @@
 				{
 					// add blips for both sensors
 					await AddBlip(radarData);
+
+					List<SensorEntity> mappedSensorEntities = SensorEntityMapper.RadarDataToSensorEntities(radarData);
+					sensorEntities.AddRange(mappedSensorEntities);
+
+					if(radarData.Rotation == 0 || radarData.Rotation == 180)
+					{
+						// On full rotation, send data to backend and clear list
+						try
+						{
+							await SensorRepository.CreateAsync(sensorEntities);
+							sensorEntities.Clear();
+						}
+						catch (Exception ex)
+						{
+							Console.WriteLine($"Failed to save sensor data to database: {ex.Message}");
+						}
+					}
 				}
 			}
 			catch (Exception ex)
