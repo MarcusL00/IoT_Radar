@@ -5,18 +5,14 @@ namespace Radar_Frontend.Models
     public class RadarData
     {
         [JsonPropertyName("rotation")]
-        internal int Rotation;
-
+        public int Rotation { get; set; }
         [JsonPropertyName("sensor_1")]
-        internal SensorData SensorData1;
-
+        public SensorData? SensorData1 { get; set; }
         [JsonPropertyName("sensor_2")]
-        internal SensorData SensorData2;
-
+        public SensorData? SensorData2 { get; set; }
         [JsonPropertyName("radar_id")]
-        internal string RadarId;
-
+        public string RadarId { get; set; } = string.Empty;
         [JsonPropertyName("timestamp")]
-        internal long Timestamp;
+        public long Timestamp { get; set; }
     }
 }

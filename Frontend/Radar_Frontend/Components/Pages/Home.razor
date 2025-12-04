@@ -35,6 +35,8 @@
 
 	List<BlipPos> Blips = new();
 
+	DateTime lastUpdate = DateTime.MinValue;
+
 	protected override async Task OnInitializedAsync()
 	{
 		try
@@ -47,16 +49,18 @@
 			Console.WriteLine($"MQTT subscription failed: {ex.Message}");
 		}
 
-		mqttService.OnMessageReceived += (payload) =>
+		mqttService.OnMessageReceived += async (payload) =>
 		{
+			if ((DateTime.UtcNow - lastUpdate).TotalMilliseconds < 200) return; // skip if too soon
+			lastUpdate = DateTime.UtcNow;
 			Console.WriteLine($"MQTT Message received with payload: {payload}");
 			try
 			{
 				var radarData = JsonSerializer.Deserialize<RadarData>(payload);
 				if (radarData != null)
 				{
-					// Sensor 1 at rotation angle
-					AddBlip(radarData);
+					// add blips for both sensors
+					await AddBlip(radarData);
 				}
 			}
 			catch (Exception ex)
@@ -65,8 +69,7 @@
 			}
 
 			CleanupBlips();
-			Task.Delay(1);
-			InvokeAsync(StateHasChanged);
+			await InvokeAsync(StateHasChanged);
 		};
 
 		// Start periodic cleanup
@@ -77,7 +80,7 @@
 		}, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
 	}
 
-	void AddBlip(RadarData radar)
+	async Task AddBlip(RadarData radar)
 	{
 		const double size = 480.0;
 		const double cx = size / 2.0;
@@ -93,19 +96,25 @@
 			int angleDeg = radar.Rotation + (i == 1 ? 180 : 0);
 			double angleRad = (angleDeg % 360) * Math.PI / 180.0;
 
-			double r = Math.Min(sensor.DistanceMeasured, radius);
-			double x = cx + r * Math.Cos(angleRad) - blipHalf;
-			double y = cy + r * Math.Sin(angleRad) - blipHalf;
+			// sensor.DistanceMeasured is in cm; convert to pixels by mapping a max sensor range to the radar radius
+			const double maxDistanceCm = 300.0; // adjust to your sensor maximum (e.g., 300 cm)
+			var distanceCm = Math.Max(0, sensor.DistanceMeasured);
+			var rPx = (Math.Min(distanceCm, maxDistanceCm) / maxDistanceCm) * radius;
+			double x = cx + rPx * Math.Cos(angleRad) - blipHalf;
+			double y = cy + rPx * Math.Sin(angleRad) - blipHalf;
 
 			// Convert Unix timestamp (assume seconds; if ms, use FromUnixTimeMilliseconds)
 			DateTime createdAt = DateTimeOffset.FromUnixTimeSeconds(radar.Timestamp).UtcDateTime;
+
+			await Task.Delay(200); // 200 ms delay before showing
 
 			Blips.Add(new BlipPos
 			{
 				Left = $"{x:F1}px",
 				Top = $"{y:F1}px",
-				CreatedAt = createdAt
+				CreatedAt = DateTime.UtcNow
 			});
+			await InvokeAsync(StateHasChanged);
 		}
 	}
 
