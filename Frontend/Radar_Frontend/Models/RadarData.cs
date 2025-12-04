@@ -14,18 +14,7 @@ namespace Radar_Frontend.Models
         [JsonPropertyName("radar_id")]
         internal string RadarId;
         [JsonPropertyName("timestamp")]
-        internal DateTime Timestamp;
-
-
-
-        public RadarData(int rotation, SensorData sensorData1, SensorData sensorData2, string radarId, DateTime timestamp)
-        {
-            Rotation = rotation;
-            SensorData1 = sensorData1;
-            SensorData2 = sensorData2;
-            RadarId = radarId;
-            Timestamp = timestamp;
-        }
+        internal long Timestamp;
     }
 }
 

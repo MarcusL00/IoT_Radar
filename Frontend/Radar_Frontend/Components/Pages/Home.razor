@@ -65,6 +65,7 @@
 			}
 
 			CleanupBlips();
+			Task.Delay(1);
 			InvokeAsync(StateHasChanged);
 		};
 
@@ -82,32 +83,32 @@
 		const double cx = size / 2.0;
 		const double cy = size / 2.0;
 		const double radius = size / 2.0 * 0.88;
-		const double blipHalf = 6.0; // 12px blip size
+		const double blipHalf = 6.0;
 
-		int i = 0;
-
-		// Sensor 1 uses rotation, sensor 2 is opposite (rotation + 180°)
-		int angleDeg = radar.Rotation + (i == 1 ? 180 : 0);
-		double angleRad = (angleDeg % 360) * Math.PI / 180.0;
-
-		// Clamp distance to radar radius
-		
-		double r = Math.Min(radar.SensorData1.DistanceMeasured, radius);
-
-		// Polar → Cartesian
-		double x = cx + r * Math.Cos(angleRad) - blipHalf;
-		double y = cy + r * Math.Sin(angleRad) - blipHalf;
-
-		Blips.Add(new BlipPos
+		for (int i = 0; i < 2; i++)
 		{
-			Left = $"{x:F1}px",
-			Top = $"{y:F1}px",
-			CreatedAt = radar.Timestamp // already a DateTime
-		});
+			var sensor = (i == 0) ? radar.SensorData1 : radar.SensorData2;
+			if (sensor == null) continue;
 
-		i++;
+			int angleDeg = radar.Rotation + (i == 1 ? 180 : 0);
+			double angleRad = (angleDeg % 360) * Math.PI / 180.0;
 
+			double r = Math.Min(sensor.DistanceMeasured, radius);
+			double x = cx + r * Math.Cos(angleRad) - blipHalf;
+			double y = cy + r * Math.Sin(angleRad) - blipHalf;
+
+			// Convert Unix timestamp (assume seconds; if ms, use FromUnixTimeMilliseconds)
+			DateTime createdAt = DateTimeOffset.FromUnixTimeSeconds(radar.Timestamp).UtcDateTime;
+
+			Blips.Add(new BlipPos
+			{
+				Left = $"{x:F1}px",
+				Top = $"{y:F1}px",
+				CreatedAt = createdAt
+			});
+		}
 	}
+
 
 
 	void CleanupBlips()

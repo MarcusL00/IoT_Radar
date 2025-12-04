@@ -10,12 +10,5 @@ namespace Radar_Frontend.Models
         internal int DistanceMeasured;
         [JsonPropertyName("unit")]
         internal string Unit;
-
-
-        public SensorData(int distanceMeasured, string unit)
-        {
-            DistanceMeasured = distanceMeasured;
-            Unit = unit;
-        }
     }
 }
