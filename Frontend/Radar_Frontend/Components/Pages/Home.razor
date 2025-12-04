@@ -2,36 +2,41 @@
 @using System.Text.Json
 @using Radar_Frontend.Models
 @using Radar_Frontend.Components.Utilities.Services
+@using global::Radar_Frontend.Models
 @inject MqttService mqttService
 
-
 <PageTitle>Home</PageTitle>
+
 <MudPaper Class="p-4 d-flex flex-column align-items-center" Elevation="3" Style="max-width:900px;margin:0 auto;">
 	<MudText Typo="Typo.h4" Class="mb-2">IoT Radar</MudText>
 
 	<div id="radar" class="radar">
 		<div class="sweep" />
-		@for (int i = 0; i < Blips.Count; i++)
+		@foreach (var blip in Blips)
 		{
-			<div class="blip" style="left:@Blips[i].Left; top:@Blips[i].Top; opacity:1"></div>
+			<div class="blip" style="left:@blip.Left; top:@blip.Top; opacity:1"></div>
 		}
 	</div>
 
 	<div class="d-flex gap-2 mt-3">
 		<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RefreshBlips">Scan</MudButton>
-		<MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CenterView">Center</MudButton>
 	</div>
 </MudPaper>
 
 @code {
-	class BlipPos { public string Left { get; set; } = "0px"; public string Top { get; set; } = "0px"; }
+
+	// --- Blip class with lifecycle ---
+	class BlipPos
+	{
+		public string Left { get; set; } = "0px";
+		public string Top { get; set; } = "0px";
+		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+	}
 
 	List<BlipPos> Blips = new();
-	Random rnd = new();
-	List<RadarData> radarDataList = new();
-	protected async override Task OnInitializedAsync()
+
+	protected override async Task OnInitializedAsync()
 	{
-		// Connect to MQTT and subscribe to topics
 		try
 		{
 			await mqttService.ConnectAsync();
@@ -47,45 +52,87 @@
 			Console.WriteLine($"MQTT Message received with payload: {payload}");
 			try
 			{
-				var list = JsonSerializer.Deserialize<List<RadarData>>(payload);
-				radarDataList = list ?? new List<RadarData>();
+				var radarData = JsonSerializer.Deserialize<RadarData>(payload);
+				if (radarData != null)
+				{
+					// Sensor 1 at rotation angle
+					AddBlip(radarData);
+				}
 			}
 			catch (Exception ex)
 			{
 				Console.WriteLine($"Failed to parse MQTT payload: {ex.Message}");
 			}
-			InvokeAsync(StateHasChanged); // Update UI when MQTT message received
+
+			CleanupBlips();
+			InvokeAsync(StateHasChanged);
 		};
-		// Subscribe to MQTT events for real-time updates
+
+		// Start periodic cleanup
+		var timer = new System.Threading.Timer(_ =>
+		{
+			CleanupBlips();
+			InvokeAsync(StateHasChanged);
+		}, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+	}
+
+	void AddBlip(RadarData radar)
+	{
+		const double size = 480.0;
+		const double cx = size / 2.0;
+		const double cy = size / 2.0;
+		const double radius = size / 2.0 * 0.88;
+		const double blipHalf = 6.0; // 12px blip size
+
+		int i = 0;
+
+		// Sensor 1 uses rotation, sensor 2 is opposite (rotation + 180°)
+		int angleDeg = radar.Rotation + (i == 1 ? 180 : 0);
+		double angleRad = (angleDeg % 360) * Math.PI / 180.0;
+
+		// Clamp distance to radar radius
+		
+		double r = Math.Min(radar.SensorData1.DistanceMeasured, radius);
+
+		// Polar → Cartesian
+		double x = cx + r * Math.Cos(angleRad) - blipHalf;
+		double y = cy + r * Math.Sin(angleRad) - blipHalf;
+
+		Blips.Add(new BlipPos
+		{
+			Left = $"{x:F1}px",
+			Top = $"{y:F1}px",
+			CreatedAt = radar.Timestamp // already a DateTime
+		});
+
+		i++;
+
+	}
 
 
-		// initial blips
-		RefreshBlips();
-
+	void CleanupBlips()
+	{
+		var cutoff = DateTime.UtcNow.AddSeconds(-10);
+		Blips = Blips.Where(b => b.CreatedAt > cutoff).ToList();
 	}
 
 	void RefreshBlips()
 	{
-		// radar size is 480px in CSS; position blips within circle radius
+		Blips.Clear();
+		var rnd = new Random();
 		var size = 480.0;
 		var cx = size / 2.0;
 		var cy = size / 2.0;
-		var radius = size / 2.0 * 0.88; // keep inside rings
+		var radius = size / 2.0 * 0.88;
 
-		for (int i = 0; i < Blips.Count; i++)
+		for (int i = 0; i < 5; i++)
 		{
 			var angle = rnd.NextDouble() * Math.PI * 2.0;
-			var r = Math.Sqrt(rnd.NextDouble()) * radius; // uniform in circle
-			var x = cx + r * Math.Cos(angle) - 6; // center the 12px blip
+			var r = Math.Sqrt(rnd.NextDouble()) * radius;
+			var x = cx + r * Math.Cos(angle) - 6;
 			var y = cy + r * Math.Sin(angle) - 6;
-			Blips[i].Left = $"{x}px";
-			Blips[i].Top = $"{y}px";
+			Blips.Add(new BlipPos { Left = $"{x}px", Top = $"{y}px", CreatedAt = DateTime.UtcNow });
 		}
 		StateHasChanged();
-	}
-
-	void CenterView()
-	{
-		// no-op placeholder: could pan or focus later
 	}
 }
