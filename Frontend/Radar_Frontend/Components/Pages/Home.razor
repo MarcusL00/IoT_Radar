@@ -20,12 +20,21 @@
 		<div class="sweep" />
 		@foreach (var blip in Blips)
 		{
-			<div class="blip" style="left:@blip.Left; top:@blip.Top; opacity:1"></div>
+			<div class="blip sensor-@blip.SensorIndex" style="left:@blip.Left; top:@blip.Top; opacity:1"></div>
 		}
 	</div>
 
-	<div class="d-flex gap-2 mt-3">
-		<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RefreshBlips">Scan</MudButton>
+	<div class="d-flex gap-3 mt-3 align-items-center sensor-legend">
+		<div class="legend-item d-flex align-items-center">
+			<div class="legend-dot sensor-0" />
+			<div class="legend-text">Sensor 1: @((LastDistance1.HasValue) ? $"{LastDistance1} {LastUnit1}" : "—")</div>
+		</div>
+		<div class="legend-item d-flex align-items-center">
+			<div class="legend-dot sensor-1" />
+			<div class="legend-text">Sensor 2: @((LastDistance2.HasValue) ? $"{LastDistance2} {LastUnit2}" : "—")</div>
+		</div>
+		<div class="ms-3 text-muted small">Last update: @((lastUpdate==DateTime.MinValue) ? "—" :
+						lastUpdate.ToLocalTime().ToString("HH:mm:ss"))</div>
 	</div>
 </MudPaper>
 
@@ -36,13 +45,20 @@
 	{
 		public string Left { get; set; } = "0px";
 		public string Top { get; set; } = "0px";
+		public int SensorIndex { get; set; } = 0; // 0 = sensor1, 1 = sensor2
 		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 	}
 
 	List<BlipPos> Blips = new();
-	List<SensorEntity> sensorEntities = new();	
+	List<SensorEntity> sensorEntities = new();
 
 	DateTime lastUpdate = DateTime.MinValue;
+
+	int? LastDistance1 = null;
+	int? LastDistance2 = null;
+	string LastUnit1 = string.Empty;
+	string LastUnit2 = string.Empty;
+
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -65,13 +81,59 @@
 				var radarData = JsonSerializer.Deserialize<RadarData>(payload);
 				if (radarData != null)
 				{
+					// Update last-seen sensor readings for the legend
+					if (radarData.SensorData1 != null && radarData.SensorData1.DistanceMeasured >= 0)
+					{
+						LastDistance1 = radarData.SensorData1.DistanceMeasured;
+						LastUnit1 = radarData.SensorData1.Unit ?? string.Empty;
+					}
+					else
+					{
+						LastDistance1 = null;
+						LastUnit1 = string.Empty;
+					}
+
+					if (radarData.SensorData2 != null && radarData.SensorData2.DistanceMeasured >= 0)
+					{
+						LastDistance2 = radarData.SensorData2.DistanceMeasured;
+						LastUnit2 = radarData.SensorData2.Unit ?? string.Empty;
+					}
+					else
+					{
+						LastDistance2 = null;
+						LastUnit2 = string.Empty;
+					}
+
 					// add blips for both sensors
 					await AddBlip(radarData);
 
-					List<SensorEntity> mappedSensorEntities = SensorEntityMapper.RadarDataToSensorEntities(radarData);
+					// Build sensor entities only for valid readings (filter out DistanceMeasured == -1)
+					var mappedSensorEntities = new List<SensorEntity>();
+					if (radarData.SensorData1 != null && radarData.SensorData1.DistanceMeasured >= 0)
+					{
+						mappedSensorEntities.Add(new SensorEntity
+						{
+							Id = radarData.RadarId,
+							DistanceMeasured = radarData.SensorData1.DistanceMeasured,
+							Unit = radarData.SensorData1.Unit ?? string.Empty,
+							Rotation = radarData.Rotation,
+							Timestamp = radarData.Timestamp,
+						});
+					}
+					if (radarData.SensorData2 != null && radarData.SensorData2.DistanceMeasured >= 0)
+					{
+						mappedSensorEntities.Add(new SensorEntity
+						{
+							Id = radarData.RadarId,
+							DistanceMeasured = radarData.SensorData2.DistanceMeasured,
+							Unit = radarData.SensorData2.Unit ?? string.Empty,
+							Rotation = radarData.Rotation,
+							Timestamp = radarData.Timestamp,
+						});
+					}
 					sensorEntities.AddRange(mappedSensorEntities);
 
-					if(radarData.Rotation == 0 || radarData.Rotation == 180)
+					if (radarData.Rotation == 0 || radarData.Rotation == 180)
 					{
 						// On full rotation, send data to backend and clear list
 						try
@@ -115,6 +177,8 @@
 		{
 			var sensor = (i == 0) ? radar.SensorData1 : radar.SensorData2;
 			if (sensor == null) continue;
+			// Ignore faulty readings (e.g. -1)
+			if (sensor.DistanceMeasured < 0) continue;
 
 			int angleDeg = radar.Rotation + (i == 1 ? 180 : 0);
 			double angleRad = (angleDeg % 360) * Math.PI / 180.0;
@@ -129,16 +193,25 @@
 			// Convert Unix timestamp (assume seconds; if ms, use FromUnixTimeMilliseconds)
 			DateTime createdAt = DateTimeOffset.FromUnixTimeSeconds(radar.Timestamp).UtcDateTime;
 
-			await Task.Delay(200); // 200 ms delay before showing
-
+			// Add blip immediately without per-blip UI calls to avoid blocking
 			Blips.Add(new BlipPos
 			{
 				Left = $"{x:F1}px",
 				Top = $"{y:F1}px",
+				SensorIndex = i,
 				CreatedAt = DateTime.UtcNow
 			});
-			await InvokeAsync(StateHasChanged);
 		}
+
+		// Prevent unbounded growth: keep only recent N blips
+		const int maxBlips = 300;
+		if (Blips.Count > maxBlips)
+		{
+			Blips = Blips.Skip(Blips.Count - maxBlips).ToList();
+		}
+
+		// Single UI update after adding both sensor blips
+		await InvokeAsync(StateHasChanged);
 	}
 
 
@@ -147,25 +220,5 @@
 	{
 		var cutoff = DateTime.UtcNow.AddSeconds(-10);
 		Blips = Blips.Where(b => b.CreatedAt > cutoff).ToList();
-	}
-
-	void RefreshBlips()
-	{
-		Blips.Clear();
-		var rnd = new Random();
-		var size = 480.0;
-		var cx = size / 2.0;
-		var cy = size / 2.0;
-		var radius = size / 2.0 * 0.88;
-
-		for (int i = 0; i < 5; i++)
-		{
-			var angle = rnd.NextDouble() * Math.PI * 2.0;
-			var r = Math.Sqrt(rnd.NextDouble()) * radius;
-			var x = cx + r * Math.Cos(angle) - 6;
-			var y = cy + r * Math.Sin(angle) - 6;
-			Blips.Add(new BlipPos { Left = $"{x}px", Top = $"{y}px", CreatedAt = DateTime.UtcNow });
-		}
-		StateHasChanged();
 	}
 }
