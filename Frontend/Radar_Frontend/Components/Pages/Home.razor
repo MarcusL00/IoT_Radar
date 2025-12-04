@@ -14,211 +14,219 @@
 <PageTitle>Home</PageTitle>
 
 <MudPaper Class="p-4 d-flex flex-column align-items-center" Elevation="3" Style="max-width:900px;margin:0 auto;">
-	<MudText Typo="Typo.h4" Class="mb-2">IoT Radar</MudText>
+    <MudText Typo="Typo.h4" Class="mb-2">IoT Radar</MudText>
 
-	<div id="radar" class="radar">
-		<div class="sweep" />
-		@foreach (var blip in Blips)
-		{
-			<div class="blip sensor-@blip.SensorIndex" style="left:@blip.Left; top:@blip.Top; opacity:1"></div>
-		}
-	</div>
+    <div id="radar" class="radar">
+        <div class="sweep" />
+        @foreach (var blip in Detections)
+        {
+            <div class="blip sensor-@blip.SensorIndex" style="left:@blip.Left; top:@blip.Top; opacity:1"></div>
+        }
+    </div>
 
-	<div class="d-flex gap-3 mt-3 align-items-center sensor-legend">
-		<div class="legend-item d-flex align-items-center">
-			<div class="legend-dot sensor-0" />
-			<div class="legend-text">Sensor 1: @((LastDistance1.HasValue) ? $"{LastDistance1} {LastUnit1}" : "—")</div>
-		</div>
-		<div class="legend-item d-flex align-items-center">
-			<div class="legend-dot sensor-1" />
-			<div class="legend-text">Sensor 2: @((LastDistance2.HasValue) ? $"{LastDistance2} {LastUnit2}" : "—")</div>
-		</div>
-		<div class="ms-3 text-muted small">Last update: @((lastUpdate==DateTime.MinValue) ? "—" :
-						lastUpdate.ToLocalTime().ToString("HH:mm:ss"))</div>
-	</div>
+    <div class="d-flex gap-3 mt-3 align-items-center sensor-legend">
+        <div class="legend-item d-flex align-items-center">
+            <div class="legend-dot sensor-0" />
+            <div class="legend-text">Sensor 1: @((LastDistance1.HasValue) ? $"{LastDistance1} {LastUnit1}" : "—")</div>
+        </div>
+        <div class="legend-item d-flex align-items-center">
+            <div class="legend-dot sensor-1" />
+            <div class="legend-text">Sensor 2: @((LastDistance2.HasValue) ? $"{LastDistance2} {LastUnit2}" : "—")</div>
+        </div>
+        <div class="ms-3 text-muted small">Last update: @((lastUpdate==DateTime.MinValue) ? "—" :
+                        lastUpdate.ToLocalTime().ToString("HH:mm:ss"))</div>
+    </div>
 </MudPaper>
 
 @code {
+    List<Detection> Detections = new();
+    List<SensorEntity> sensorEntities = new();
 
-	// --- Blip class with lifecycle ---
-	class BlipPos
-	{
-		public string Left { get; set; } = "0px";
-		public string Top { get; set; } = "0px";
-		public int SensorIndex { get; set; } = 0; // 0 = sensor1, 1 = sensor2
-		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-	}
+    DateTime lastUpdate = DateTime.MinValue;
 
-	List<BlipPos> Blips = new();
-	List<SensorEntity> sensorEntities = new();
+    int? LastDistance1 = null;
+    int? LastDistance2 = null;
+    string LastUnit1 = string.Empty;
+    string LastUnit2 = string.Empty;
 
-	DateTime lastUpdate = DateTime.MinValue;
+    // Radar constants
+    private const double RadarSize = 480.0;
+    private const double RadarRadius = RadarSize / 2.0 * 0.88;
+    private const double CenterX = RadarSize / 2.0;
+    private const double CenterY = RadarSize / 2.0;
+    private const double BlipSize = 12.0;
+    private const double BlipHalf = BlipSize / 2.0;
+    private const double MaxDistanceCm = 300.0;
+    private const int MaxBlips = 300;
 
-	int? LastDistance1 = null;
-	int? LastDistance2 = null;
-	string LastUnit1 = string.Empty;
-	string LastUnit2 = string.Empty;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await mqttService.ConnectAsync();
+            await mqttService.SubscribeAsync("radar/distance");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"MQTT subscription failed: {ex.Message}");
+        }
 
+        mqttService.OnMessageReceived += async (payload) =>
+        {
+            lastUpdate = DateTime.UtcNow;
+            Console.WriteLine($"MQTT Message received with payload: {payload}");
+            try
+            {
+                var radarData = JsonSerializer.Deserialize<RadarData>(payload);
+                if (radarData != null)
+                {
+                    UpdateLegend(radarData);
+                    await AddDetection(radarData);
+                    MapSensorEntities(radarData);
 
-	protected override async Task OnInitializedAsync()
-	{
-		try
-		{
-			await mqttService.ConnectAsync();
-			await mqttService.SubscribeAsync("radar/distance");
-		}
-		catch (Exception ex)
-		{
-			Console.WriteLine($"MQTT subscription failed: {ex.Message}");
-		}
+                    if (radarData.Rotation == 0 || radarData.Rotation == 180)
+                    {
+                        try
+                        {
+                            await SensorRepository.CreateAsync(sensorEntities);
+                            sensorEntities.Clear();
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Failed to save sensor data to database: {ex.Message}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to parse MQTT payload: {ex.Message}");
+            }
 
-		mqttService.OnMessageReceived += async (payload) =>
-		{
-			lastUpdate = DateTime.UtcNow;
-			Console.WriteLine($"MQTT Message received with payload: {payload}");
-			try
-			{
-				var radarData = JsonSerializer.Deserialize<RadarData>(payload);
-				if (radarData != null)
-				{
-					// Update last-seen sensor readings for the legend
-					if (radarData.SensorData1 != null && radarData.SensorData1.DistanceMeasured >= 0)
-					{
-						LastDistance1 = radarData.SensorData1.DistanceMeasured;
-						LastUnit1 = radarData.SensorData1.Unit ?? string.Empty;
-					}
-					else
-					{
-						LastDistance1 = null;
-						LastUnit1 = string.Empty;
-					}
+            CleanupBlips();
+            await InvokeAsync(StateHasChanged);
+        };
 
-					if (radarData.SensorData2 != null && radarData.SensorData2.DistanceMeasured >= 0)
-					{
-						LastDistance2 = radarData.SensorData2.DistanceMeasured;
-						LastUnit2 = radarData.SensorData2.Unit ?? string.Empty;
-					}
-					else
-					{
-						LastDistance2 = null;
-						LastUnit2 = string.Empty;
-					}
+        var timer = new System.Threading.Timer(_ =>
+        {
+            CleanupBlips();
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
 
-					// add blips for both sensors
-					await AddBlip(radarData);
+    private void UpdateLegend(RadarData radarData)
+    {
+        if (radarData.SensorData1 != null && radarData.SensorData1.DistanceMeasured >= 0)
+        {
+            LastDistance1 = radarData.SensorData1.DistanceMeasured;
+            LastUnit1 = radarData.SensorData1.Unit ?? string.Empty;
+        }
+        else
+        {
+            LastDistance1 = null;
+            LastUnit1 = string.Empty;
+        }
 
-					// Build sensor entities only for valid readings (filter out DistanceMeasured == -1)
-					var mappedSensorEntities = new List<SensorEntity>();
-					if (radarData.SensorData1 != null && radarData.SensorData1.DistanceMeasured >= 0)
-					{
-						mappedSensorEntities.Add(new SensorEntity
-						{
-							RadarId = radarData.RadarId,
-							DistanceMeasured = radarData.SensorData1.DistanceMeasured,
-							Unit = radarData.SensorData1.Unit ?? string.Empty,
-							Rotation = radarData.Rotation,
-							Timestamp = radarData.Timestamp,
-						});
-					}
-					if (radarData.SensorData2 != null && radarData.SensorData2.DistanceMeasured >= 0)
-					{
-						mappedSensorEntities.Add(new SensorEntity
-						{
-							RadarId = radarData.RadarId,
-							DistanceMeasured = radarData.SensorData2.DistanceMeasured,
-							Unit = radarData.SensorData2.Unit ?? string.Empty,
-							Rotation = radarData.Rotation,
-							Timestamp = radarData.Timestamp,
-						});
-					}
-					sensorEntities.AddRange(mappedSensorEntities);
+        if (radarData.SensorData2 != null && radarData.SensorData2.DistanceMeasured >= 0)
+        {
+            LastDistance2 = radarData.SensorData2.DistanceMeasured;
+            LastUnit2 = radarData.SensorData2.Unit ?? string.Empty;
+        }
+        else
+        {
+            LastDistance2 = null;
+            LastUnit2 = string.Empty;
+        }
+    }
 
-					if (radarData.Rotation == 0 || radarData.Rotation == 180)
-					{
-						// On full rotation, send data to backend and clear list
-						try
-						{
-							await SensorRepository.CreateAsync(sensorEntities);
-							sensorEntities.Clear();
-						}
-						catch (Exception ex)
-						{
-							Console.WriteLine($"Failed to save sensor data to database: {ex.Message}");
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				Console.WriteLine($"Failed to parse MQTT payload: {ex.Message}");
-			}
+    private void MapSensorEntities(RadarData radarData)
+    {
+        var mappedSensorEntities = new List<SensorEntity>();
 
-			CleanupBlips();
-			await InvokeAsync(StateHasChanged);
-		};
+        if (radarData.SensorData1 != null && radarData.SensorData1.DistanceMeasured >= 0)
+        {
+            mappedSensorEntities.Add(new SensorEntity
+            {
+                RadarId = radarData.RadarId,
+                DistanceMeasured = radarData.SensorData1.DistanceMeasured,
+                Unit = radarData.SensorData1.Unit ?? string.Empty,
+                Rotation = radarData.Rotation,
+                Timestamp = radarData.Timestamp,
+            });
+        }
 
-		// Start periodic cleanup
-		var timer = new System.Threading.Timer(_ =>
-		{
-			CleanupBlips();
-			InvokeAsync(StateHasChanged);
-		}, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
-	}
+        if (radarData.SensorData2 != null && radarData.SensorData2.DistanceMeasured >= 0)
+        {
+            mappedSensorEntities.Add(new SensorEntity
+            {
+                RadarId = radarData.RadarId,
+                DistanceMeasured = radarData.SensorData2.DistanceMeasured,
+                Unit = radarData.SensorData2.Unit ?? string.Empty,
+                Rotation = radarData.Rotation,
+                Timestamp = radarData.Timestamp,
+            });
+        }
 
-	async Task AddBlip(RadarData radar)
-	{
-		const double size = 480.0;
-		const double cx = size / 2.0;
-		const double cy = size / 2.0;
-		const double radius = size / 2.0 * 0.88;
-		const double blipHalf = 6.0;
+        sensorEntities.AddRange(mappedSensorEntities);
+    }
 
-		for (int i = 0; i < 2; i++)
-		{
-			var sensor = (i == 0) ? radar.SensorData1 : radar.SensorData2;
-			if (sensor == null) continue;
-			// Ignore faulty readings (e.g. -1)
-			if (sensor.DistanceMeasured < 0) continue;
+    async Task AddDetection(RadarData radar)
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            var sensor = (i == 0) ? radar.SensorData1 : radar.SensorData2;
+            if (sensor == null || sensor.DistanceMeasured < 0) continue;
 
-			int angleDeg = radar.Rotation + (i == 1 ? 180 : 0);
-			double angleRad = (angleDeg % 360) * Math.PI / 180.0;
+            double angleRad = GetSensorAngle(radar.Rotation, i);
+            double rPx = MapDistanceToPixels(sensor.DistanceMeasured);
 
-			// sensor.DistanceMeasured is in cm; convert to pixels by mapping a max sensor range to the radar radius
-			const double maxDistanceCm = 300.0; // adjust to your sensor maximum (e.g., 300 cm)
-			var distanceCm = Math.Max(0, sensor.DistanceMeasured);
-			var rPx = (Math.Min(distanceCm, maxDistanceCm) / maxDistanceCm) * radius;
-			double x = cx + rPx * Math.Cos(angleRad) - blipHalf;
-			double y = cy + rPx * Math.Sin(angleRad) - blipHalf;
+            var (x, y) = PolarToCartesian(angleRad, rPx);
+            DateTime createdAt = DateTimeOffset.FromUnixTimeSeconds(radar.Timestamp).UtcDateTime;
 
-			// Convert Unix timestamp (assume seconds; if ms, use FromUnixTimeMilliseconds)
-			DateTime createdAt = DateTimeOffset.FromUnixTimeSeconds(radar.Timestamp).UtcDateTime;
+            Detections.Add(CreateDetection(x, y, i, createdAt));
+        }
 
-			// Add blip immediately without per-blip UI calls to avoid blocking
-			Blips.Add(new BlipPos
-			{
-				Left = $"{x:F1}px",
-				Top = $"{y:F1}px",
-				SensorIndex = i,
-				CreatedAt = DateTime.UtcNow
-			});
-		}
+        if (Detections.Count > MaxBlips)
+        {
+            Detections = Detections.Skip(Detections.Count - MaxBlips).ToList();
+        }
 
-		// Prevent unbounded growth: keep only recent N blips
-		const int maxBlips = 300;
-		if (Blips.Count > maxBlips)
-		{
-			Blips = Blips.Skip(Blips.Count - maxBlips).ToList();
-		}
+        await InvokeAsync(StateHasChanged);
+    }
 
-		// Single UI update after adding both sensor blips
-		await InvokeAsync(StateHasChanged);
-	}
+    private static double GetSensorAngle(int rotation, int sensorIndex)
+    {
+        int angleDeg = rotation + (sensorIndex == 1 ? 180 : 0);
+        return (angleDeg % 360) * Math.PI / 180.0;
+    }
 
+    private static double MapDistanceToPixels(double distanceCm)
+    {
+        var clamped = Math.Min(Math.Max(0, distanceCm), MaxDistanceCm);
+        return (clamped / MaxDistanceCm) * RadarRadius;
+    }
 
+    private static (double x, double y) PolarToCartesian(double angleRad, double rPx)
+    {
+        double x = CenterX + rPx * Math.Cos(angleRad) - BlipHalf;
+        double y = CenterY + rPx * Math.Sin(angleRad) - BlipHalf;
+        return (x, y);
+    }
 
-	void CleanupBlips()
-	{
-		var cutoff = DateTime.UtcNow.AddSeconds(-10);
-		Blips = Blips.Where(b => b.CreatedAt > cutoff).ToList();
-	}
+    private static Detection CreateDetection(double x, double y, int sensorIndex, DateTime createdAt)
+    {
+        return new Detection
+        {
+            Left = $"{x:F1}px",
+            Top = $"{y:F1}px",
+            SensorIndex = sensorIndex,
+            CreatedAt = createdAt
+        };
+    }
+
+    void CleanupBlips()
+    {
+        var cutoff = DateTime.UtcNow.AddSeconds(-10);
+        Detections = Detections.Where(b => b.CreatedAt > cutoff).ToList();
+    }
 }
