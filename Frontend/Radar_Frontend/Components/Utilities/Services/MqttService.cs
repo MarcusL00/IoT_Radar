@@ -5,7 +5,6 @@ namespace Radar_Frontend.Components.Utilities.Services
 {
     public class MqttService
     {
-
         private IMqttClient _mqttClient;
         public event Func<string, Task>? OnMessageReceived;
 
@@ -57,9 +56,11 @@ namespace Radar_Frontend.Components.Utilities.Services
         {
             if (_mqttClient?.IsConnected == true)
             {
-                await _mqttClient.SubscribeAsync(new MQTTnet.Client.Subscribing.MqttClientSubscribeOptionsBuilder()
-                    .WithTopicFilter(f => f.WithTopic(topic))
-                    .Build());
+                await _mqttClient.SubscribeAsync(
+                    new MQTTnet.Client.Subscribing.MqttClientSubscribeOptionsBuilder()
+                        .WithTopicFilter(f => f.WithTopic(topic))
+                        .Build()
+                );
             }
         }
     }

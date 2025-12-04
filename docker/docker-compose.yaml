@@ -14,6 +14,7 @@ services:
       - radar_network
 
   frontend:
+    container_name: iot_radar_frontend
     build:
       context: ../frontend/radar_frontend
       dockerfile: ../../docker/Dockerfile.frontend
@@ -32,6 +33,7 @@ services:
 
   mongodb:
     image: mongodb/mongodb-community-server:latest
+    container_name: iot_radar_mongodb
     restart: unless-stopped
     ports:
       - '27017:27017'

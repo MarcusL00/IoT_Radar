@@ -12,9 +12,10 @@ namespace radar_frontend.Repositories
 
         public SensorRepository(IOptions<MongoDbSettings> settings)
         {
-            var client = new MongoClient(settings.Value.ConnectionString);
-            var database = client.GetDatabase(settings.Value.DatabaseName);
-            _collection = database.GetCollection<SensorEntity>(settings.Value.CollectionName);
+            var cfg = settings.Value;
+            var client = new MongoClient(cfg.ConnectionString);
+            var database = client.GetDatabase(cfg.DatabaseName);
+            _collection = database.GetCollection<SensorEntity>(cfg.CollectionName);
         }
 
         public async Task CreateAsync(List<SensorEntity> sensorEntities)

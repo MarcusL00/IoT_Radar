@@ -113,7 +113,7 @@
 					{
 						mappedSensorEntities.Add(new SensorEntity
 						{
-							Id = radarData.RadarId,
+							RadarId = radarData.RadarId,
 							DistanceMeasured = radarData.SensorData1.DistanceMeasured,
 							Unit = radarData.SensorData1.Unit ?? string.Empty,
 							Rotation = radarData.Rotation,
@@ -124,7 +124,7 @@
 					{
 						mappedSensorEntities.Add(new SensorEntity
 						{
-							Id = radarData.RadarId,
+							RadarId = radarData.RadarId,
 							DistanceMeasured = radarData.SensorData2.DistanceMeasured,
 							Unit = radarData.SensorData2.Unit ?? string.Empty,
 							Rotation = radarData.Rotation,
