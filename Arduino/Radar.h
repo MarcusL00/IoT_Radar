@@ -11,15 +11,16 @@ class Radar
   Sensor& sensor_2;
 
   MQTT& mqtt;
+  WiFiConnection& wiFiConnection;
+
   TimeHandler& timeHandler;
 
   char* unique_identifier;
 
 public:
-  Radar(int motor_pin, Sensor& sensor_1, Sensor& sensor_2, MQTT& mqtt, TimeHandler& timeHandler)
-      : motor(motor_pin), sensor_1(sensor_1), sensor_2(sensor_2), mqtt(mqtt), timeHandler(timeHandler)
+  Radar(int motor_pin, Sensor& sensor_1, Sensor& sensor_2, MQTT& mqtt, WiFiConnection& wiFiConnection, TimeHandler& timeHandler)
+      : motor(motor_pin), sensor_1(sensor_1), sensor_2(sensor_2), mqtt(mqtt), wiFiConnection(wiFiConnection), timeHandler(timeHandler)
     {
-
     }
 
 public:
@@ -27,6 +28,7 @@ public:
   {
     unique_identifier = mac_address;
 
+    timeHandler.Init();
     motor.Init();
   }
 
@@ -36,19 +38,21 @@ public:
     for (int pos = 0; pos <= 180; pos += 1)
     { 
       if(pos % 10 == 0 && pos != 0) {
+        wiFiConnection.EnsureConnectivity();
         mqtt.EnsureConnectivity();
+        ReadDistanceForSensors(pos);
       }
-
-      ReadDistanceForSensors(pos);
+      delay(100);
     }
 
     for (int pos = 180; pos >= 0; pos -= 1)
     {
       if(pos % 10 == 0 && pos != 0) {
+        wiFiConnection.EnsureConnectivity();
         mqtt.EnsureConnectivity();
+        ReadDistanceForSensors(pos);
       }
-
-      ReadDistanceForSensors(pos);
+      delay(100);
     }
   }
 
