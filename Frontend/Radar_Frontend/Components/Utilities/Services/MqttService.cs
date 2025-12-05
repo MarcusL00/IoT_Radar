@@ -1,32 +1,35 @@
 using MQTTnet;
 using MQTTnet.Client;
+using MQTTnet.Client.Options;
+using MQTTnet.Client.Subscribing;
+using System;
+using System.Threading.Tasks;
 
 namespace Radar_Frontend.Components.Utilities.Services
 {
     public class MqttService
     {
-        private IMqttClient _mqttClient;
+        private readonly IMqttClient _mqttClient;
+        private bool _subscribed = false;
+
         public event Func<string, Task>? OnMessageReceived;
 
-        public async Task ConnectAsync()
+        public MqttService()
         {
             var factory = new MqttFactory();
             _mqttClient = factory.CreateMqttClient();
 
-            var options = new MQTTnet.Client.Options.MqttClientOptionsBuilder()
-                .WithTcpServer("mosquitto", 1883)
-                .WithCleanSession()
-                .Build();
-
-            // Handle incoming messages and await any async handlers
+            // Register the handler ONCE in the constructor
             _mqttClient.UseApplicationMessageReceivedHandler(async e =>
             {
                 var topic = e.ApplicationMessage.Topic;
                 var payload = e.ApplicationMessage.ConvertPayloadToString();
+
+                Console.WriteLine($"MQTT message received on topic '{topic}': {payload}");
+
                 var handler = OnMessageReceived;
                 if (handler != null)
                 {
-                    // Invoke each subscriber and await it to ensure UI updates occur in order
                     foreach (var d in handler.GetInvocationList())
                     {
                         try
@@ -41,10 +44,20 @@ namespace Radar_Frontend.Components.Utilities.Services
                     }
                 }
             });
+        }
+
+        public async Task ConnectAsync()
+        {
+            var options = new MqttClientOptionsBuilder()
+                .WithTcpServer("mosquitto", 1883)
+                // Consider removing CleanSession if you want broker to remember subscriptions
+                .WithCleanSession()
+                .Build();
 
             try
             {
                 await _mqttClient.ConnectAsync(options);
+                Console.WriteLine("MQTT connected.");
             }
             catch (Exception ex)
             {
@@ -54,13 +67,20 @@ namespace Radar_Frontend.Components.Utilities.Services
 
         public async Task SubscribeAsync(string topic = "radar/distance")
         {
-            if (_mqttClient?.IsConnected == true)
+            if (_mqttClient?.IsConnected == true && !_subscribed)
             {
                 await _mqttClient.SubscribeAsync(
-                    new MQTTnet.Client.Subscribing.MqttClientSubscribeOptionsBuilder()
+                    new MqttClientSubscribeOptionsBuilder()
                         .WithTopicFilter(f => f.WithTopic(topic))
                         .Build()
                 );
+
+                _subscribed = true;
+                Console.WriteLine($"Subscribed to topic '{topic}'.");
+            }
+            else if (_subscribed)
+            {
+                Console.WriteLine($"Already subscribed to topic '{topic}', skipping duplicate subscription.");
             }
         }
     }
